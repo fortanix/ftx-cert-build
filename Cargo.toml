@@ -1,0 +1,23 @@
+[package]
+name = "ftx-cert-build"
+version = "0.1.0"
+authors = ["Fortanix, Inc."]
+edition = "2021"
+description = "Builder for certificates, TBS certificates, and CSRs, implemented as a wrapper around the pkix crate."
+
+[dependencies]
+chrono = { workspace = true }
+mbedtls = { workspace = true, default_features = false }
+pkix = { workspace = true }
+serde = { workspace = true, optional = true }
+thiserror = { workspace = true }
+
+[features]
+default = ["ecdsaecdh", "rsa"]
+
+ecdsaecdh = []
+mbedtls_adapter = []
+rsa = []
+# Add serde::Serialize and serde:Deserialize bound to data types.
+# If you'd like to use `serde` to serialize certs/csrs.
+serde = ["dep:serde"]
