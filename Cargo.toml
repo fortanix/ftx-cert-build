@@ -7,9 +7,9 @@ description = "Builder for certificates, TBS certificates, and CSRs, implemented
 
 [dependencies]
 chrono = { version = "0.4.37", default-features = false }
-mbedtls = { version = "0.13.4", default-features = false }
+mbedtls = { version = "0.13.4", default-features = false, features = ["std", "rdrand"] }
 pkix = "0.2.5"
-serde = { version = "1.0", optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
 thiserror = "1.0.69"
 
 [features]

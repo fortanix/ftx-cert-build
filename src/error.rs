@@ -44,8 +44,12 @@ impl Display for ValidationErrorType {
             ValidationErrorType::PkAndSigAlgMismatch => {
                 f.write_str("the signature algorithm does not match the provided private key")
             }
-            ValidationErrorType::DuplicateExtension(oid) => write!(f, "extension with oid {} appears multiple times", oid),
-            ValidationErrorType::DuplicateAttribute(oid) => write!(f, "attribute with oid {} appears multiple times", oid),
+            ValidationErrorType::DuplicateExtension(oid) => {
+                write!(f, "extension with oid {} appears multiple times", oid)
+            }
+            ValidationErrorType::DuplicateAttribute(oid) => {
+                write!(f, "attribute with oid {} appears multiple times", oid)
+            }
         }
     }
 }

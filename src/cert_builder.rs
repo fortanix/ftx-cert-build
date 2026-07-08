@@ -258,6 +258,7 @@ impl<I, CP, L, S> Builder<CertificateState<I, L>, CP, NoKeyMaterial, S> {
 }
 
 impl<L, CP: CryptoProvider> Builder<CertificateState<NoIssuer, L>, CP, NoKeyMaterial, Subject> {
+    #[allow(clippy::type_complexity)]
     pub fn with_self_signing_key<A: SigningAdapter<CP::Pk>, K: BorrowMut<CP::Pk>>(
         self,
         signing_key: &mut K,
@@ -281,6 +282,7 @@ impl<L, CP: CryptoProvider> Builder<CertificateState<NoIssuer, L>, CP, NoKeyMate
 }
 
 impl<'a, I, L, CP: CryptoProvider, A, S> Builder<CertificateState<I, L>, CP, SpkiKeyMaterial<'a, A>, S> {
+    #[allow(clippy::type_complexity)]
     pub fn with_signing_key<'b, K: BorrowMut<CP::Pk>>(
         self,
         signing_key: &'b mut K,

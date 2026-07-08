@@ -73,6 +73,7 @@ impl Builder<CsrState<'_>> {
 }
 
 impl<'a, CP: CryptoProvider, S> Builder<CsrState<'a>, CP, NoKeyMaterial, S> {
+    #[allow(clippy::type_complexity)]
     pub fn with_self_signing_key<A: SigningAdapter<CP::Pk>, K: BorrowMut<CP::Pk>>(
         self,
         signing_key: &mut K,
