@@ -22,6 +22,11 @@ The entry point for each of the above items is as follows:
 3. [`Certificate`](./src/cert_builder.rs) has a `builder` method to start constructing a certificate. At the end, one calls `build_cert` or one of two `build_cert_generate_key` methods, depending on whether keys are supplied by the user or generated with default parameters by the builder.
 4. [`NameBuilder`](./src/name_builder.rs) has methods `build_subject` and `build_issuer` to build `Subject`s and `Issuer`s, respectively
 
+## Sanity Check
+
+Please run [sanity-check.sh](./sanity-check.sh) prior to creating a PR,
+to ensure that workspace actions will pass to permit merging.
+
 ## Contributing
 
 We gratefully accept bug reports and contributions from the community.
