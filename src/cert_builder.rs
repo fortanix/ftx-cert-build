@@ -7,7 +7,6 @@ use std::borrow::BorrowMut;
 use std::ops::{Deref, DerefMut};
 
 use chrono::{DateTime, Duration, Utc};
-use mbedtls::rng::Random;
 use pkix::bit_vec::BitVec;
 use pkix::num_bigint::BigUint;
 use pkix::types::{DateTime as PkixDateTime, DerSequence, SignatureAlgorithm};
@@ -312,7 +311,7 @@ where
     fn build_tbs_struct(mut self) -> Result<PkixTbsCertificate<BigUint, <K as TbsKeys>::SigAlgorithm, <K as TbsKeys>::Spki>> {
         const SERIAL_BYTE_LENGTH: usize = 20;
         let mut serial = [0u8; SERIAL_BYTE_LENGTH];
-        self.crypto_provider.rng().random(&mut serial)?;
+        self.crypto_provider.fill_random(&mut serial)?;
         // Per RFC 5280, serial numbers must be positive, and at most 20 octets.
         // DER encoding of numbers with the MSB set would require an extra byte.
         serial[0] &= 0x7f;
@@ -368,10 +367,10 @@ where
 
 impl<CP: CryptoProvider, A> Builder<CertificateState<Issuer, CertLifetime>, CP, DefaultSelfSigningKeyMaterial<A>, Subject>
 where
-    A: Clone + DefaultPkParameters<CP::Pk> + DerWrite + SigningAdapter<CP::Pk>,
+    A: Clone + DefaultPkParameters<CP::Pk, CP::Rng> + DerWrite + SigningAdapter<CP::Pk>,
 {
     pub fn build_cert_generate_key(mut self) -> Result<(Certificate, CP::Pk)> {
-        let mut signing_key = <A as DefaultPkParameters<_>>::generate_pk(self.crypto_provider.rng())?;
+        let mut signing_key = <A as DefaultPkParameters<_, _>>::generate_pk(self.crypto_provider.rng())?;
 
         let new_builder = self.with_key_material_fun(|key_material| SelfSigningKeyMaterial {
             signing_key: &mut signing_key,
@@ -383,10 +382,10 @@ where
 
 impl<CP: CryptoProvider, A> Builder<CertificateState<Issuer, CertLifetime>, CP, SpkiKeyMaterial<'_, A>, Subject>
 where
-    A: Clone + DefaultPkParameters<CP::Pk> + DerWrite + SigningAdapter<CP::Pk>,
+    A: Clone + DefaultPkParameters<CP::Pk, CP::Rng> + DerWrite + SigningAdapter<CP::Pk>,
 {
     pub fn build_cert_generate_key(mut self) -> Result<(Certificate, CP::Pk)> {
-        let mut signing_key = <A as DefaultPkParameters<_>>::generate_pk(self.crypto_provider.rng())?;
+        let mut signing_key = <A as DefaultPkParameters<_, _>>::generate_pk(self.crypto_provider.rng())?;
 
         let new_builder = self.with_signing_key(&mut signing_key)?;
         Ok((new_builder.build_cert()?, signing_key))

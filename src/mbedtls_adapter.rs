@@ -4,7 +4,9 @@
 |* the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 use mbedtls::hash::{self, Type as HashType};
-use mbedtls::pk::{Pk, Type as PkType, ECDSA_MAX_LEN};
+#[cfg(feature = "ecdsaecdh")]
+use mbedtls::pk::ECDSA_MAX_LEN;
+use mbedtls::pk::{Pk, Type as PkType};
 use mbedtls::rng::{Random, Rdrand};
 #[cfg(feature = "rsa")]
 use pkix::types::RsaPkcs15;
@@ -13,8 +15,9 @@ use pkix::types::Sha256;
 use {mbedtls::pk::EcGroupId, pkix::types::EcdsaX962};
 
 use crate::cert_builder::CertificateState;
+use crate::crypto_provider::CryptoProvider;
 #[cfg(feature = "ecdsaecdh")]
-use crate::crypto_provider::{CryptoProvider, DefaultPkParameters};
+use crate::crypto_provider::DefaultPkParameters;
 use crate::crypto_provider::{PkProvider, SigningAdapter};
 use crate::csr_builder::CsrState;
 use crate::error::Result;
@@ -46,8 +49,8 @@ impl PkProvider for Pk {
         Ok(self.write_public_der_vec()?)
     }
 
-    fn signature_algorithm(&self) -> Self::SignatureAlgorithm {
-        self.pk_type()
+    fn signature_algorithm(&self) -> Result<Self::SignatureAlgorithm> {
+        Ok(self.pk_type())
     }
 }
 
@@ -130,8 +133,8 @@ impl PkixMbedTlsHashAdapter for Sha256 {
 
 /// For ECDSA, the default is [PkAlgorithm::EcdsaEcdh] with [EcGroupId::SecP256R1]
 #[cfg(feature = "ecdsaecdh")]
-impl<H> DefaultPkParameters<Pk> for EcdsaX962<H> {
-    fn generate_pk<R: Random>(rng: &mut R) -> Result<Pk> {
+impl<H, R: Random> DefaultPkParameters<Pk, R> for EcdsaX962<H> {
+    fn generate_pk(rng: &mut R) -> Result<Pk> {
         Ok(Pk::generate_ec(rng, EcGroupId::SecP256R1)?)
     }
 }
@@ -153,6 +156,10 @@ impl CryptoProvider for MbedtlsCryptoProvider {
 
     fn rng(&mut self) -> &mut Self::Rng {
         &mut self.rng
+    }
+
+    fn fill_random(&mut self, bytes: &mut [u8]) -> Result<()> {
+        Ok(self.rng.random(bytes)?)
     }
 }
 

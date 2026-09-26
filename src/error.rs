@@ -6,6 +6,7 @@
 use std::borrow::Cow;
 use std::fmt::Display;
 
+#[cfg(feature = "mbedtls_adapter")]
 use mbedtls::Error as MbedtlsError;
 use pkix::types::ObjectIdentifier;
 use pkix::ASN1Error;
@@ -21,6 +22,7 @@ pub enum Error {
     #[error("Validation failed")]
     Validation(ValidationErrorType),
     // from errors
+    #[cfg(feature = "mbedtls_adapter")]
     #[error("Mbedtls")]
     Mbedtls(#[from] MbedtlsError),
     #[error("ASN1")]
