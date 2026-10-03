@@ -1,22 +1,28 @@
 [package]
 name = "ftx-cert-build"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Fortanix, Inc."]
 edition = "2021"
 description = "Builder for certificates, TBS certificates, and CSRs, implemented as a wrapper around the pkix crate."
 
 [dependencies]
 chrono = { version = "0.4.23", default-features = false }
-mbedtls = { version = ">=0.12.0, <0.14.0", default-features = false, features = ["rdrand", "std"] }
+mbedtls = { version = ">=0.12.0, <0.14.0", default-features = false, features = ["rdrand", "std"], optional = true }
 pkix = "0.2.2"
 serde = { version = "1.0.113", features = ["derive"], optional = true }
 thiserror = "1.0.2"
+rustls = { version = "0.23", optional = true }
+rustls-pki-types = { version = "1.15.1", optional = true }
+rsa = { version = "0.9", optional = true }
+p256 = { version = "0.13", default-features = false, features = ["arithmetic", "pkcs8", "std"], optional = true }
+rand_core = { version = "0.6", features = ["getrandom"], optional = true }
 
 [features]
-default = ["ecdsaecdh", "rsa"]
+default = ["ecdsaecdh", "rsa", "mbedtls_adapter"]
 
 ecdsaecdh = []
-mbedtls_adapter = []
+mbedtls_adapter = ["dep:mbedtls"]
+rustls_adapter = ["dep:rustls", "dep:rustls-pki-types", "dep:rsa", "dep:p256", "dep:rand_core"]
 rsa = []
 # Add serde::Serialize and serde:Deserialize bound to data types.
 # If you'd like to use `serde` to serialize certs/csrs.

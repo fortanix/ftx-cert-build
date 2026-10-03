@@ -5,16 +5,14 @@
 
 //! File containing different traits and definitions that need to be instantiated by a specific crypto provider in order too use this library
 
-use mbedtls::rng::Random;
 use pkix::types::SignatureAlgorithm as PkixSignatureAlgorithm;
 
 use crate::error::{Error, Result, ValidationErrorType};
 
 pub trait CryptoProvider {
     type Pk: PkProvider;
-    type Rng: Random;
 
-    fn rng(&mut self) -> &mut Self::Rng;
+    fn fill_random(&mut self, bytes: &mut [u8]) -> Result<()>;
 }
 
 #[derive(Clone, Debug)]
@@ -43,7 +41,7 @@ pub trait PkProvider {
 
     fn write_public_key_der(&mut self) -> Result<Vec<u8>>;
 
-    fn signature_algorithm(&self) -> Self::SignatureAlgorithm;
+    fn signature_algorithm(&self) -> Result<Self::SignatureAlgorithm>;
 }
 
 /// Adapter trait to link a pkix signature algorithm to a `PkProvider`
@@ -59,14 +57,14 @@ pub trait SigningAdapter<PK: PkProvider>: PkixSignatureAlgorithm {
     fn hash_meta() -> <PK as PkProvider>::HashMeta;
 
     fn allows_pk(pk: &PK) -> Result<()> {
-        (pk.signature_algorithm() == Self::signature_algorithm())
+        (pk.signature_algorithm()? == Self::signature_algorithm())
             .then_some(())
             .ok_or(Error::Validation(ValidationErrorType::PkAndSigAlgMismatch))
     }
 }
 
 /// [pkix::types::SignatureAlgorithm]s that have default key parameters and can use those to
-/// generate keys of type `PK`
-pub trait DefaultPkParameters<PK> {
-    fn generate_pk<R: Random>(rng: &mut R) -> Result<PK>;
+/// generate keys using a concrete crypto provider and its internal randomness.
+pub trait DefaultPkParameters<CP: CryptoProvider> {
+    fn generate_pk(crypto_provider: &mut CP) -> Result<CP::Pk>;
 }
