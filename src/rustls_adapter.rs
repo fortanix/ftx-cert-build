@@ -80,74 +80,46 @@ pub struct RustlsSignatureMeta {
 
 pub struct RustlsHashMeta {}
 
-/// Maps a pkix hash to rustls hashing and compatible signature schemes.
-#[cfg(any(feature = "rsa", feature = "ecdsaecdh"))]
-trait PkixRustlsHashAdapter {
-    fn rustls_hash_algorithm() -> HashAlgorithm;
-
-    fn rustls_hash_meta() -> RustlsHashMeta;
-
-    #[cfg(feature = "rsa")]
-    const RSA_SCHEME: SignatureScheme;
-
-    #[cfg(feature = "ecdsaecdh")]
-    const ECDSA_SCHEME: SignatureScheme;
-}
-
-// As with the mbedtls adapter, only SHA-256 is currently supported.
-#[cfg(any(feature = "rsa", feature = "ecdsaecdh"))]
-impl PkixRustlsHashAdapter for Sha256 {
-    fn rustls_hash_algorithm() -> HashAlgorithm {
-        HashAlgorithm::SHA256
-    }
-
-    fn rustls_hash_meta() -> RustlsHashMeta {
-        RustlsHashMeta {}
-    }
-
-    #[cfg(feature = "rsa")]
-    const RSA_SCHEME: SignatureScheme = SignatureScheme::RSA_PKCS1_SHA256;
-
-    #[cfg(feature = "ecdsaecdh")]
-    const ECDSA_SCHEME: SignatureScheme = SignatureScheme::ECDSA_NISTP256_SHA256;
-}
-
 #[cfg(feature = "rsa")]
-impl<H: PkixRustlsHashAdapter> SigningAdapter<PrivateKeyDer<'static>> for RsaPkcs15<H> {
+impl SigningAdapter<PrivateKeyDer<'static>> for RsaPkcs15<Sha256> {
     fn signature_algorithm() -> <PrivateKeyDer<'static> as PkProvider>::SignatureAlgorithm {
         SignatureAlgorithm::RSA
     }
 
     fn signature_meta(_pk: &PrivateKeyDer<'static>) -> Result<<PrivateKeyDer<'static> as PkProvider>::SignatureMeta> {
-        Ok(RustlsSignatureMeta { scheme: H::RSA_SCHEME })
+        Ok(RustlsSignatureMeta {
+            scheme: SignatureScheme::RSA_PKCS1_SHA256,
+        })
     }
 
     fn hash_algorithm() -> HashAlgorithm {
-        H::rustls_hash_algorithm()
+        HashAlgorithm::SHA256
     }
 
     fn hash_meta() -> <PrivateKeyDer<'static> as PkProvider>::HashMeta {
-        H::rustls_hash_meta()
+        RustlsHashMeta {}
     }
 }
 
-/// ECDSA using the curve and hash selected by the hash adapter.
+/// ECDSA with SHA-256 using a P-256 key.
 #[cfg(feature = "ecdsaecdh")]
-impl<H: PkixRustlsHashAdapter> SigningAdapter<PrivateKeyDer<'static>> for EcdsaX962<H> {
+impl SigningAdapter<PrivateKeyDer<'static>> for EcdsaX962<Sha256> {
     fn signature_algorithm() -> SignatureAlgorithm {
         SignatureAlgorithm::ECDSA
     }
 
     fn signature_meta(_pk: &PrivateKeyDer<'static>) -> Result<RustlsSignatureMeta> {
-        Ok(RustlsSignatureMeta { scheme: H::ECDSA_SCHEME })
+        Ok(RustlsSignatureMeta {
+            scheme: SignatureScheme::ECDSA_NISTP256_SHA256,
+        })
     }
 
     fn hash_algorithm() -> HashAlgorithm {
-        H::rustls_hash_algorithm()
+        HashAlgorithm::SHA256
     }
 
     fn hash_meta() -> RustlsHashMeta {
-        H::rustls_hash_meta()
+        RustlsHashMeta {}
     }
 }
 
