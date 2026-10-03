@@ -27,7 +27,7 @@ use crate::crypto_provider::DefaultPkParameters;
 use crate::crypto_provider::PkProvider;
 use crate::crypto_provider::SigningAdapter;
 use crate::csr_builder::CsrState;
-use crate::error::{Error, Result, ValidationErrorType};
+use crate::error::{Error, Result};
 use crate::{Builder, Certificate, Csr};
 
 fn load_signing_key(key: &PrivateKeyDer<'static>) -> Result<Arc<dyn SigningKey>> {
@@ -53,9 +53,6 @@ impl PkProvider for PrivateKeyDer<'static> {
         Self: Sized,
     {
         let key = load_signing_key(self)?;
-        if key.algorithm() != A::signature_algorithm() {
-            return Err(Error::Validation(ValidationErrorType::PkAndSigAlgMismatch));
-        }
         let scheme = A::signature_meta(self)?.scheme;
         let signer = key
             .choose_scheme(&[scheme])
