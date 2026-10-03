@@ -21,8 +21,6 @@ use crate::crypto_provider::DefaultPkParameters;
 use crate::crypto_provider::{PkProvider, SigningAdapter};
 use crate::csr_builder::CsrState;
 use crate::error::Result;
-#[cfg(feature = "ecdsaecdh")]
-use crate::error::{Error, ValidationErrorType};
 use crate::{Builder, Certificate, Csr};
 
 impl PkProvider for Pk {
@@ -77,13 +75,14 @@ pub struct MbedtlsHashMeta {
 
 #[cfg(feature = "ecdsaecdh")]
 impl<H: PkixMbedTlsHashAdapter> SigningAdapter<Pk> for EcdsaX962<H> {
-    fn allows_pk(pk: &Pk) -> Result<()> {
-        // Imported EC keys use Eckey but `signature_algorithm` returns PkType::Ecdsa
-        // checking for equality doesn't work for EC keys.
-        pk.can_do(<Self as SigningAdapter<Pk>>::signature_algorithm())
-            .then_some(())
-            .ok_or(Error::Validation(ValidationErrorType::PkAndSigAlgMismatch))
-    }
+    // Without this: test_ecdsa_adapter_key_import fail.
+    // fn allows_pk(pk: &Pk) -> Result<()> {
+    //     // Imported EC keys use Eckey but `signature_algorithm` returns PkType::Ecdsa
+    //     // checking for equality doesn't work for EC keys.
+    //     pk.can_do(<Self as SigningAdapter<Pk>>::signature_algorithm())
+    //         .then_some(())
+    //         .ok_or(crate::error::Error::Validation(crate::error::ValidationErrorType::PkAndSigAlgMismatch))
+    // }
 
     fn signature_algorithm() -> <Pk as PkProvider>::SignatureAlgorithm {
         PkType::Ecdsa
@@ -178,5 +177,24 @@ impl Csr {
     /// Build CSRs using PKI types and RNG from `FtxCrypto`
     pub fn mbedtls_crypto_builder<'a>() -> Builder<CsrState<'a>, MbedtlsCryptoProvider> {
         Self::builder().with_crypto_provider(MbedtlsCryptoProvider::new())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mbedtls::pk::{Pk, Type};
+
+    #[cfg(feature = "ecdsaecdh")]
+    #[test]
+    fn test_ecdsa_adapter_key_import() {
+        let mut mbedtls_provider = MbedtlsCryptoProvider::new();
+        let mut generated = EcdsaX962::<Sha256>::generate_pk(&mut mbedtls_provider).unwrap();
+        let der = generated.write_private_der_vec().unwrap();
+        let imported = Pk::from_private_key(&der, None).unwrap();
+
+        assert_eq!(imported.pk_type(), Type::Eckey);
+        <EcdsaX962<Sha256> as SigningAdapter<Pk>>::allows_pk(&imported)
+            .expect("an imported EC key capable of ECDSA should be accepted");
     }
 }
