@@ -367,10 +367,10 @@ where
 
 impl<CP: CryptoProvider, A> Builder<CertificateState<Issuer, CertLifetime>, CP, DefaultSelfSigningKeyMaterial<A>, Subject>
 where
-    A: Clone + DefaultPkParameters<CP::Pk, CP::Rng> + DerWrite + SigningAdapter<CP::Pk>,
+    A: Clone + DefaultPkParameters<CP> + DerWrite + SigningAdapter<CP::Pk>,
 {
     pub fn build_cert_generate_key(mut self) -> Result<(Certificate, CP::Pk)> {
-        let mut signing_key = <A as DefaultPkParameters<_, _>>::generate_pk(self.crypto_provider.rng())?;
+        let mut signing_key = <A as DefaultPkParameters<_>>::generate_pk(&mut self.crypto_provider)?;
 
         let new_builder = self.with_key_material_fun(|key_material| SelfSigningKeyMaterial {
             signing_key: &mut signing_key,
@@ -382,10 +382,10 @@ where
 
 impl<CP: CryptoProvider, A> Builder<CertificateState<Issuer, CertLifetime>, CP, SpkiKeyMaterial<'_, A>, Subject>
 where
-    A: Clone + DefaultPkParameters<CP::Pk, CP::Rng> + DerWrite + SigningAdapter<CP::Pk>,
+    A: Clone + DefaultPkParameters<CP> + DerWrite + SigningAdapter<CP::Pk>,
 {
     pub fn build_cert_generate_key(mut self) -> Result<(Certificate, CP::Pk)> {
-        let mut signing_key = <A as DefaultPkParameters<_, _>>::generate_pk(self.crypto_provider.rng())?;
+        let mut signing_key = <A as DefaultPkParameters<_>>::generate_pk(&mut self.crypto_provider)?;
 
         let new_builder = self.with_signing_key(&mut signing_key)?;
         Ok((new_builder.build_cert()?, signing_key))

@@ -11,9 +11,6 @@ use crate::error::{Error, Result, ValidationErrorType};
 
 pub trait CryptoProvider {
     type Pk: PkProvider;
-    type Rng;
-
-    fn rng(&mut self) -> &mut Self::Rng;
 
     fn fill_random(&mut self, bytes: &mut [u8]) -> Result<()>;
 }
@@ -67,7 +64,7 @@ pub trait SigningAdapter<PK: PkProvider>: PkixSignatureAlgorithm {
 }
 
 /// [pkix::types::SignatureAlgorithm]s that have default key parameters and can use those to
-/// generate keys of type `PK` using the backend's RNG type `R`.
-pub trait DefaultPkParameters<PK, R> {
-    fn generate_pk(rng: &mut R) -> Result<PK>;
+/// generate keys using a concrete crypto provider and its internal randomness.
+pub trait DefaultPkParameters<CP: CryptoProvider> {
+    fn generate_pk(crypto_provider: &mut CP) -> Result<CP::Pk>;
 }

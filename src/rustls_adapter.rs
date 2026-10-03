@@ -11,8 +11,6 @@ use pkix::types::EcdsaX962;
 use pkix::types::RsaPkcs15;
 #[cfg(any(feature = "rsa", feature = "ecdsaecdh"))]
 use pkix::types::Sha256;
-#[cfg(any(feature = "rsa", feature = "ecdsaecdh"))]
-use rand_core::CryptoRng;
 use rand_core::OsRng;
 use rand_core::RngCore;
 use rustls::crypto::hash::HashAlgorithm;
@@ -156,23 +154,23 @@ impl<H: PkixRustlsHashAdapter> SigningAdapter<PrivateKeyDer<'static>> for EcdsaX
     }
 }
 
-/// Generate an RSA-2048 key with public exponent 65537 (default) using the supplied RNG.
+/// Generate an RSA-2048 key with public exponent 65537 (default) using the provider's RNG.
 #[cfg(feature = "rsa")]
-impl<H, R: RngCore + CryptoRng> DefaultPkParameters<PrivateKeyDer<'static>, R> for RsaPkcs15<H> {
-    fn generate_pk(rng: &mut R) -> Result<PrivateKeyDer<'static>> {
+impl<H> DefaultPkParameters<RustlsCryptoProvider> for RsaPkcs15<H> {
+    fn generate_pk(crypto_provider: &mut RustlsCryptoProvider) -> Result<PrivateKeyDer<'static>> {
         use rsa::pkcs8::EncodePrivateKey;
-        let key = rsa::RsaPrivateKey::new(rng, 2048).map_err(|err| Error::Pki(err.to_string().into()))?;
+        let key = rsa::RsaPrivateKey::new(&mut crypto_provider.rng, 2048).map_err(|err| Error::Pki(err.to_string().into()))?;
         let der = key.to_pkcs8_der().map_err(|err| Error::Pki(err.to_string().into()))?;
         Ok(PrivateKeyDer::Pkcs8(der.as_bytes().to_vec().into()))
     }
 }
 
-/// Generate a P-256 key using the supplied RNG.
+/// Generate a P-256 key using the provider's RNG.
 #[cfg(feature = "ecdsaecdh")]
-impl<H, R: RngCore + CryptoRng> DefaultPkParameters<PrivateKeyDer<'static>, R> for EcdsaX962<H> {
-    fn generate_pk(rng: &mut R) -> Result<PrivateKeyDer<'static>> {
+impl<H> DefaultPkParameters<RustlsCryptoProvider> for EcdsaX962<H> {
+    fn generate_pk(crypto_provider: &mut RustlsCryptoProvider) -> Result<PrivateKeyDer<'static>> {
         use p256::pkcs8::EncodePrivateKey;
-        let key = p256::SecretKey::random(rng);
+        let key = p256::SecretKey::random(&mut crypto_provider.rng);
         let der = key.to_pkcs8_der().map_err(|err| Error::Pki(err.to_string().into()))?;
         Ok(PrivateKeyDer::Pkcs8(der.as_bytes().to_vec().into()))
     }
@@ -191,11 +189,6 @@ impl RustlsCryptoProvider {
 
 impl CrateCryptoProvider for RustlsCryptoProvider {
     type Pk = PrivateKeyDer<'static>;
-    type Rng = OsRng;
-
-    fn rng(&mut self) -> &mut Self::Rng {
-        &mut self.rng
-    }
 
     fn fill_random(&mut self, bytes: &mut [u8]) -> Result<()> {
         self.rng

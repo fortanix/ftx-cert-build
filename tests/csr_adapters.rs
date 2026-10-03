@@ -3,10 +3,10 @@
 // ECDSA is excluded from byte-for-byte CSR comparison as ECDSA provider
 // uses randomized signing.
 
+use ftx_cert_build::rustls_adapter::RustlsCryptoProvider;
 use ftx_cert_build::{crypto_provider::DefaultPkParameters, name_builder::DnType, Csr, NameBuilder};
 use mbedtls::{hash, pk::Pk};
 use pkix::types::{RsaPkcs15, Sha256};
-use rand_core::OsRng;
 use rustls_pki_types::PrivateKeyDer;
 
 type Rsa = RsaPkcs15<Sha256>;
@@ -15,7 +15,7 @@ fn build_csrs() -> (Csr, Csr, Pk) {
     let algorithm = RsaPkcs15(Sha256);
     let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
     // Generate once and import the same key
-    let mut rustls_key: PrivateKeyDer<'static> = Rsa::generate_pk(&mut OsRng).unwrap();
+    let mut rustls_key: PrivateKeyDer<'static> = Rsa::generate_pk(&mut RustlsCryptoProvider::new()).unwrap();
     let mut mbedtls_key = Pk::from_private_key(rustls_key.secret_der(), None).unwrap();
 
     let subject = NameBuilder::new().add_dn(DnType::CommonName, "csr.example").build_subject();

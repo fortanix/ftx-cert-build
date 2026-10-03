@@ -143,9 +143,9 @@ impl PkixMbedTlsHashAdapter for Sha256 {
 
 /// For ECDSA, the default is [PkAlgorithm::EcdsaEcdh] with [EcGroupId::SecP256R1]
 #[cfg(feature = "ecdsaecdh")]
-impl<H, R: Random> DefaultPkParameters<Pk, R> for EcdsaX962<H> {
-    fn generate_pk(rng: &mut R) -> Result<Pk> {
-        Ok(Pk::generate_ec(rng, EcGroupId::SecP256R1)?)
+impl<H> DefaultPkParameters<MbedtlsCryptoProvider> for EcdsaX962<H> {
+    fn generate_pk(crypto_provider: &mut MbedtlsCryptoProvider) -> Result<Pk> {
+        Ok(Pk::generate_ec(&mut crypto_provider.rng, EcGroupId::SecP256R1)?)
     }
 }
 
@@ -161,12 +161,6 @@ impl MbedtlsCryptoProvider {
 
 impl CryptoProvider for MbedtlsCryptoProvider {
     type Pk = Pk;
-
-    type Rng = Rdrand;
-
-    fn rng(&mut self) -> &mut Self::Rng {
-        &mut self.rng
-    }
 
     fn fill_random(&mut self, bytes: &mut [u8]) -> Result<()> {
         Ok(self.rng.random(bytes)?)
