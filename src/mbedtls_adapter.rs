@@ -75,14 +75,15 @@ pub struct MbedtlsHashMeta {
 
 #[cfg(feature = "ecdsaecdh")]
 impl<H: PkixMbedTlsHashAdapter> SigningAdapter<Pk> for EcdsaX962<H> {
-    // Without this: test_ecdsa_adapter_key_import fail.
-    // fn allows_pk(pk: &Pk) -> Result<()> {
-    //     // Imported EC keys use Eckey but `signature_algorithm` returns PkType::Ecdsa
-    //     // checking for equality doesn't work for EC keys.
-    //     pk.can_do(<Self as SigningAdapter<Pk>>::signature_algorithm())
-    //         .then_some(())
-    //         .ok_or(crate::error::Error::Validation(crate::error::ValidationErrorType::PkAndSigAlgMismatch))
-    // }
+    fn allows_pk(pk: &Pk) -> Result<()> {
+        // Imported EC keys use Eckey but `signature_algorithm` returns PkType::Ecdsa
+        // checking for equality doesn't work for EC keys.
+        pk.can_do(<Self as SigningAdapter<Pk>>::signature_algorithm())
+            .then_some(())
+            .ok_or(crate::error::Error::Validation(
+                crate::error::ValidationErrorType::PkAndSigAlgMismatch,
+            ))
+    }
 
     fn signature_algorithm() -> <Pk as PkProvider>::SignatureAlgorithm {
         PkType::Ecdsa
