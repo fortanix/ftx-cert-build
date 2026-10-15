@@ -30,16 +30,22 @@ use crate::csr_builder::CsrState;
 use crate::error::{Error, Result};
 use crate::{Builder, Certificate, Csr};
 
-fn load_signing_key(key: &PrivateKeyDer<'static>) -> Result<Arc<dyn SigningKey>> {
-    let provider =
-        CryptoProvider::get_default().ok_or_else(|| Error::Pki("no default rustls crypto provider installed".into()))?;
-    provider
-        .key_provider
-        .load_private_key(key.clone_key())
-        .map_err(|err| Error::Pki(err.to_string().into()))
+#[derive(Clone, Debug)]
+pub struct RustlsPk {
+    key: Arc<dyn SigningKey>,
 }
 
-impl PkProvider for PrivateKeyDer<'static> {
+impl RustlsPk {
+    pub fn from_der(key: PrivateKeyDer<'static>, provider: &CryptoProvider) -> Result<Self> {
+        let key = provider
+            .key_provider
+            .load_private_key(key)
+            .map_err(|err| Error::Pki(err.to_string().into()))?;
+        Ok(Self { key })
+    }
+}
+
+impl PkProvider for RustlsPk {
     type SignatureAlgorithm = SignatureAlgorithm;
 
     type SignatureMeta = ();
@@ -52,13 +58,13 @@ impl PkProvider for PrivateKeyDer<'static> {
     where
         Self: Sized,
     {
-        let key = load_signing_key(self)?;
         let scheme = match (A::signature_algorithm(), A::hash_algorithm()) {
             (SignatureAlgorithm::RSA, HashAlgorithm::SHA256) => SignatureScheme::RSA_PKCS1_SHA256,
             (SignatureAlgorithm::ECDSA, HashAlgorithm::SHA256) => SignatureScheme::ECDSA_NISTP256_SHA256,
             _ => return Err(Error::Pki("unsupported signature algorithm/hash combination".into())),
         };
-        let signer = key
+        let signer = self
+            .key
             .choose_scheme(&[scheme])
             .ok_or_else(|| Error::Pki("private key does not support the requested signature scheme".into()))?;
         // Rustls hashes the message internally according to the selected scheme.
@@ -66,26 +72,25 @@ impl PkProvider for PrivateKeyDer<'static> {
     }
 
     fn write_public_key_der(&mut self) -> Result<Vec<u8>> {
-        let key = load_signing_key(self)?;
-        let public_key = key
+        let public_key = self
+            .key
             .public_key()
             .ok_or_else(|| Error::Pki("rustls signing key does not expose a public key".into()))?;
         Ok(public_key.to_vec())
     }
 
     fn signature_algorithm(&self) -> Self::SignatureAlgorithm {
-        // TODO: Remove unwrap.
-        load_signing_key(self).unwrap().algorithm()
+        self.key.algorithm()
     }
 }
 
 #[cfg(feature = "rsa")]
-impl SigningAdapter<PrivateKeyDer<'static>> for RsaPkcs15<Sha256> {
-    fn signature_algorithm() -> <PrivateKeyDer<'static> as PkProvider>::SignatureAlgorithm {
+impl SigningAdapter<RustlsPk> for RsaPkcs15<Sha256> {
+    fn signature_algorithm() -> <RustlsPk as PkProvider>::SignatureAlgorithm {
         SignatureAlgorithm::RSA
     }
 
-    fn signature_meta(_pk: &PrivateKeyDer<'static>) -> Result<<PrivateKeyDer<'static> as PkProvider>::SignatureMeta> {
+    fn signature_meta(_pk: &RustlsPk) -> Result<<RustlsPk as PkProvider>::SignatureMeta> {
         Ok(())
     }
 
@@ -93,17 +98,17 @@ impl SigningAdapter<PrivateKeyDer<'static>> for RsaPkcs15<Sha256> {
         HashAlgorithm::SHA256
     }
 
-    fn hash_meta() -> <PrivateKeyDer<'static> as PkProvider>::HashMeta {}
+    fn hash_meta() -> <RustlsPk as PkProvider>::HashMeta {}
 }
 
 /// ECDSA with SHA-256 using a P-256 key.
 #[cfg(feature = "ecdsaecdh")]
-impl SigningAdapter<PrivateKeyDer<'static>> for EcdsaX962<Sha256> {
+impl SigningAdapter<RustlsPk> for EcdsaX962<Sha256> {
     fn signature_algorithm() -> SignatureAlgorithm {
         SignatureAlgorithm::ECDSA
     }
 
-    fn signature_meta(_pk: &PrivateKeyDer<'static>) -> Result<<PrivateKeyDer<'static> as PkProvider>::SignatureMeta> {
+    fn signature_meta(_pk: &RustlsPk) -> Result<<RustlsPk as PkProvider>::SignatureMeta> {
         Ok(())
     }
 
@@ -111,44 +116,62 @@ impl SigningAdapter<PrivateKeyDer<'static>> for EcdsaX962<Sha256> {
         HashAlgorithm::SHA256
     }
 
-    fn hash_meta() -> <PrivateKeyDer<'static> as PkProvider>::HashMeta {}
+    fn hash_meta() -> <RustlsPk as PkProvider>::HashMeta {}
 }
 
 /// Generate an RSA-2048 key with public exponent 65537 (default) using the provider's RNG.
 #[cfg(feature = "rsa")]
 impl<H> DefaultPkParameters<RustlsCryptoProvider> for RsaPkcs15<H> {
-    fn generate_pk(crypto_provider: &mut RustlsCryptoProvider) -> Result<PrivateKeyDer<'static>> {
+    fn generate_pk(crypto_provider: &mut RustlsCryptoProvider) -> Result<RustlsPk> {
         use rsa::pkcs8::EncodePrivateKey;
         let key = rsa::RsaPrivateKey::new(&mut crypto_provider.rng, 2048).map_err(|err| Error::Pki(err.to_string().into()))?;
         let der = key.to_pkcs8_der().map_err(|err| Error::Pki(err.to_string().into()))?;
-        Ok(PrivateKeyDer::Pkcs8(der.as_bytes().to_vec().into()))
+        RustlsPk::from_der(
+            PrivateKeyDer::Pkcs8(der.as_bytes().to_vec().into()),
+            &crypto_provider.provider,
+        )
     }
 }
 
 /// Generate a P-256 key using the provider's RNG.
 #[cfg(feature = "ecdsaecdh")]
 impl<H> DefaultPkParameters<RustlsCryptoProvider> for EcdsaX962<H> {
-    fn generate_pk(crypto_provider: &mut RustlsCryptoProvider) -> Result<PrivateKeyDer<'static>> {
+    fn generate_pk(crypto_provider: &mut RustlsCryptoProvider) -> Result<RustlsPk> {
         use p256::pkcs8::EncodePrivateKey;
         let key = p256::SecretKey::random(&mut crypto_provider.rng);
         let der = key.to_pkcs8_der().map_err(|err| Error::Pki(err.to_string().into()))?;
-        Ok(PrivateKeyDer::Pkcs8(der.as_bytes().to_vec().into()))
+        RustlsPk::from_der(
+            PrivateKeyDer::Pkcs8(der.as_bytes().to_vec().into()),
+            &crypto_provider.provider,
+        )
     }
 }
 
-#[derive(Default)]
 pub struct RustlsCryptoProvider {
     rng: OsRng,
+    provider: Arc<CryptoProvider>,
+}
+
+impl Default for RustlsCryptoProvider {
+    fn default() -> Self {
+        Self::with_provider(Arc::new(rustls::crypto::aws_lc_rs::default_provider()))
+    }
 }
 
 impl RustlsCryptoProvider {
+    /// Use an explicit rustls provider when loading generated keys.
+    pub fn with_provider(provider: Arc<CryptoProvider>) -> Self {
+        Self { rng: OsRng, provider }
+    }
+
+    /// Use the AWS-LC rustls provider without installing a global provider.
     pub fn new() -> Self {
         Self::default()
     }
 }
 
 impl CrateCryptoProvider for RustlsCryptoProvider {
-    type Pk = PrivateKeyDer<'static>;
+    type Pk = RustlsPk;
 
     fn fill_random(&mut self, bytes: &mut [u8]) -> Result<()> {
         self.rng
@@ -162,11 +185,23 @@ impl Certificate {
     pub fn rustls_crypto_builder() -> Builder<CertificateState, RustlsCryptoProvider> {
         Self::builder().with_crypto_provider(RustlsCryptoProvider::new())
     }
+
+    pub fn rustls_crypto_builder_with_provider(
+        provider: Arc<CryptoProvider>,
+    ) -> Builder<CertificateState, RustlsCryptoProvider> {
+        Self::builder().with_crypto_provider(RustlsCryptoProvider::with_provider(provider))
+    }
 }
 
 impl Csr {
     /// Build CSRs using PKI types and OsRng
     pub fn rustls_crypto_builder<'a>() -> Builder<CsrState<'a>, RustlsCryptoProvider> {
         Self::builder().with_crypto_provider(RustlsCryptoProvider::new())
+    }
+
+    pub fn rustls_crypto_builder_with_provider<'a>(
+        provider: Arc<CryptoProvider>,
+    ) -> Builder<CsrState<'a>, RustlsCryptoProvider> {
+        Self::builder().with_crypto_provider(RustlsCryptoProvider::with_provider(provider))
     }
 }
