@@ -6,7 +6,6 @@
 use std::borrow::Cow;
 use std::fmt::Display;
 
-use mbedtls::Error as MbedtlsError;
 use pkix::types::ObjectIdentifier;
 use pkix::ASN1Error;
 use thiserror::Error;
@@ -21,8 +20,8 @@ pub enum Error {
     #[error("Validation failed")]
     Validation(ValidationErrorType),
     // from errors
-    #[error("Mbedtls")]
-    Mbedtls(#[from] MbedtlsError),
+    #[error("Crypto operation failed: {0}")]
+    Crypto(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("ASN1")]
     ASN1(#[from] ASN1Error),
 }

@@ -12,6 +12,8 @@ pub mod key_material;
 #[cfg(feature = "mbedtls_adapter")]
 pub mod mbedtls_adapter;
 pub mod name_builder;
+#[cfg(feature = "rustls_adapter")]
+pub mod rustls_adapter;
 pub(crate) mod util;
 
 pub use builder_common::Builder;
