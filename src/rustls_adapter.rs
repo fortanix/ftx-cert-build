@@ -84,17 +84,13 @@ impl SigningAdapter<PrivateKeyDer<'static>> for RsaPkcs15<Sha256> {
         SignatureAlgorithm::RSA
     }
 
-    fn signature_meta(_pk: &PrivateKeyDer<'static>) -> <PrivateKeyDer<'static> as PkProvider>::SignatureMeta {
-        ()
-    }
+    fn signature_meta(_pk: &PrivateKeyDer<'static>) -> <PrivateKeyDer<'static> as PkProvider>::SignatureMeta {}
 
     fn hash_algorithm() -> HashAlgorithm {
         HashAlgorithm::SHA256
     }
 
-    fn hash_meta() -> <PrivateKeyDer<'static> as PkProvider>::HashMeta {
-        ()
-    }
+    fn hash_meta() -> <PrivateKeyDer<'static> as PkProvider>::HashMeta {}
 }
 
 /// ECDSA with SHA-256 using a P-256 key.
@@ -104,17 +100,13 @@ impl SigningAdapter<PrivateKeyDer<'static>> for EcdsaX962<Sha256> {
         SignatureAlgorithm::ECDSA
     }
 
-    fn signature_meta(_pk: &PrivateKeyDer<'static>) -> <PrivateKeyDer<'static> as PkProvider>::SignatureMeta {
-        ()
-    }
+    fn signature_meta(_pk: &PrivateKeyDer<'static>) -> <PrivateKeyDer<'static> as PkProvider>::SignatureMeta {}
 
     fn hash_algorithm() -> HashAlgorithm {
         HashAlgorithm::SHA256
     }
 
-    fn hash_meta() -> <PrivateKeyDer<'static> as PkProvider>::HashMeta {
-        ()
-    }
+    fn hash_meta() -> <PrivateKeyDer<'static> as PkProvider>::HashMeta {}
 }
 
 /// Generate an RSA-2048 key with public exponent 65537 (default) using the provider's RNG.
