@@ -45,7 +45,7 @@ impl PkProvider for Pk {
         let mut digest = vec![0u8; A::hash_meta().hash_len];
         hash::Md::hash(A::hash_algorithm(), data, &mut digest)?;
 
-        let mut sig = vec![0; A::signature_meta(self).signature_max_len];
+        let mut sig = vec![0; A::signature_meta(self)?.signature_max_len];
         let len = self.sign(A::hash_algorithm(), &digest, sig.as_mut_slice(), &mut Rdrand)?;
         sig.truncate(len);
         Ok(sig)
