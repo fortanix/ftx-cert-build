@@ -89,7 +89,7 @@ impl<H: PkixMbedTlsHashAdapter> SigningAdapter<Pk> for EcdsaX962<H> {
         PkType::Ecdsa
     }
 
-    fn signature_meta(_pk: &Pk) -> <Pk as PkProvider>::SignatureMeta {
+    fn signature_meta(_pk: &Pk) -> Result<<Pk as PkProvider>::SignatureMeta> {
         Ok(MbedtlsSignatureMeta {
             signature_max_len: ECDSA_MAX_LEN,
         })
@@ -110,7 +110,7 @@ impl<H: PkixMbedTlsHashAdapter> SigningAdapter<Pk> for RsaPkcs15<H> {
         PkType::Rsa
     }
 
-    fn signature_meta(pk: &Pk) -> <Pk as PkProvider>::SignatureMeta {
+    fn signature_meta(pk: &Pk) -> Result<<Pk as PkProvider>::SignatureMeta> {
         Ok(MbedtlsSignatureMeta {
             signature_max_len: pk.len().div_ceil(8),
         })
