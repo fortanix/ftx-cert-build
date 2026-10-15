@@ -20,8 +20,14 @@ use crate::crypto_provider::CryptoProvider;
 use crate::crypto_provider::DefaultPkParameters;
 use crate::crypto_provider::{PkProvider, SigningAdapter};
 use crate::csr_builder::CsrState;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::{Builder, Certificate, Csr};
+
+impl From<mbedtls::Error> for Error {
+    fn from(err: mbedtls::Error) -> Self {
+        Self::Crypto(Box::new(err))
+    }
+}
 
 impl PkProvider for Pk {
     type SignatureAlgorithm = PkType;

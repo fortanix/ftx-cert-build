@@ -30,6 +30,12 @@ use crate::csr_builder::CsrState;
 use crate::error::{Error, Result};
 use crate::{Builder, Certificate, Csr};
 
+impl From<aws_lc_rs::error::Unspecified> for Error {
+    fn from(err: aws_lc_rs::error::Unspecified) -> Self {
+        Self::Crypto(Box::new(err))
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct RustlsPk {
     key: Arc<dyn SigningKey>,
@@ -126,8 +132,8 @@ impl<H> DefaultPkParameters<RustlsCryptoProvider> for RsaPkcs15<H> {
         use aws_lc_rs::encoding::{AsDer, Pkcs8V1Der};
         use aws_lc_rs::rsa::{KeyPair, KeySize};
 
-        let key = KeyPair::generate(KeySize::Rsa2048).map_err(|err| Error::Pki(err.to_string().into()))?;
-        let der = AsDer::<Pkcs8V1Der>::as_der(&key).map_err(|err| Error::Pki(err.to_string().into()))?;
+        let key = KeyPair::generate(KeySize::Rsa2048)?;
+        let der = AsDer::<Pkcs8V1Der>::as_der(&key)?;
         RustlsPk::from_der(PrivateKeyDer::Pkcs8(der.as_ref().to_vec().into()), &crypto_provider.provider)
     }
 }
@@ -138,8 +144,8 @@ impl<H> DefaultPkParameters<RustlsCryptoProvider> for EcdsaX962<H> {
     fn generate_pk(crypto_provider: &mut RustlsCryptoProvider) -> Result<RustlsPk> {
         use aws_lc_rs::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_ASN1_SIGNING};
 
-        let key = EcdsaKeyPair::generate(&ECDSA_P256_SHA256_ASN1_SIGNING).map_err(|err| Error::Pki(err.to_string().into()))?;
-        let der = key.to_pkcs8v1().map_err(|err| Error::Pki(err.to_string().into()))?;
+        let key = EcdsaKeyPair::generate(&ECDSA_P256_SHA256_ASN1_SIGNING)?;
+        let der = key.to_pkcs8v1()?;
         RustlsPk::from_der(PrivateKeyDer::Pkcs8(der.as_ref().to_vec().into()), &crypto_provider.provider)
     }
 }
@@ -171,9 +177,7 @@ impl CrateCryptoProvider for RustlsCryptoProvider {
     type Pk = RustlsPk;
 
     fn fill_random(&mut self, bytes: &mut [u8]) -> Result<()> {
-        self.rng
-            .try_fill_bytes(bytes)
-            .map_err(|err| Error::Pki(err.to_string().into()))
+        self.rng.try_fill_bytes(bytes).map_err(|err| Error::Crypto(Box::new(err)))
     }
 }
 
