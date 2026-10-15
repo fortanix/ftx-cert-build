@@ -73,8 +73,9 @@ impl PkProvider for PrivateKeyDer<'static> {
         Ok(public_key.to_vec())
     }
 
-    fn signature_algorithm(&self) -> Result<Self::SignatureAlgorithm> {
-        Ok(load_signing_key(self)?.algorithm())
+    fn signature_algorithm(&self) -> Self::SignatureAlgorithm {
+        // TODO: Remove unwrap.
+        load_signing_key(self).unwrap().algorithm()
     }
 }
 
@@ -84,7 +85,9 @@ impl SigningAdapter<PrivateKeyDer<'static>> for RsaPkcs15<Sha256> {
         SignatureAlgorithm::RSA
     }
 
-    fn signature_meta(_pk: &PrivateKeyDer<'static>) -> <PrivateKeyDer<'static> as PkProvider>::SignatureMeta {}
+    fn signature_meta(_pk: &PrivateKeyDer<'static>) -> Result<<PrivateKeyDer<'static> as PkProvider>::SignatureMeta> {
+        Ok(())
+    }
 
     fn hash_algorithm() -> HashAlgorithm {
         HashAlgorithm::SHA256
@@ -100,7 +103,9 @@ impl SigningAdapter<PrivateKeyDer<'static>> for EcdsaX962<Sha256> {
         SignatureAlgorithm::ECDSA
     }
 
-    fn signature_meta(_pk: &PrivateKeyDer<'static>) -> <PrivateKeyDer<'static> as PkProvider>::SignatureMeta {}
+    fn signature_meta(_pk: &PrivateKeyDer<'static>) -> Result<<PrivateKeyDer<'static> as PkProvider>::SignatureMeta> {
+        Ok(())
+    }
 
     fn hash_algorithm() -> HashAlgorithm {
         HashAlgorithm::SHA256

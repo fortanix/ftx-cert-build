@@ -49,8 +49,8 @@ impl PkProvider for Pk {
         Ok(self.write_public_der_vec()?)
     }
 
-    fn signature_algorithm(&self) -> Result<Self::SignatureAlgorithm> {
-        Ok(self.pk_type())
+    fn signature_algorithm(&self) -> Self::SignatureAlgorithm {
+        self.pk_type()
     }
 }
 
@@ -90,9 +90,9 @@ impl<H: PkixMbedTlsHashAdapter> SigningAdapter<Pk> for EcdsaX962<H> {
     }
 
     fn signature_meta(_pk: &Pk) -> <Pk as PkProvider>::SignatureMeta {
-        MbedtlsSignatureMeta {
+        Ok(MbedtlsSignatureMeta {
             signature_max_len: ECDSA_MAX_LEN,
-        }
+        })
     }
 
     fn hash_algorithm() -> HashType {
@@ -111,9 +111,9 @@ impl<H: PkixMbedTlsHashAdapter> SigningAdapter<Pk> for RsaPkcs15<H> {
     }
 
     fn signature_meta(pk: &Pk) -> <Pk as PkProvider>::SignatureMeta {
-        MbedtlsSignatureMeta {
+        Ok(MbedtlsSignatureMeta {
             signature_max_len: pk.len().div_ceil(8),
-        }
+        })
     }
 
     fn hash_algorithm() -> HashType {

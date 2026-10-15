@@ -41,7 +41,7 @@ pub trait PkProvider {
 
     fn write_public_key_der(&mut self) -> Result<Vec<u8>>;
 
-    fn signature_algorithm(&self) -> Result<Self::SignatureAlgorithm>;
+    fn signature_algorithm(&self) -> Self::SignatureAlgorithm;
 }
 
 /// Adapter trait to link a pkix signature algorithm to a `PkProvider`
@@ -53,7 +53,7 @@ pub trait SigningAdapter<PK: PkProvider>: PkixSignatureAlgorithm {
     /// such as the signature length.
     /// This function can error if the given `PK` does not have
     /// [Self::signature_algorithm] as its algorithm
-    fn signature_meta(pk: &PK) -> <PK as PkProvider>::SignatureMeta;
+    fn signature_meta(pk: &PK) -> Result<<PK as PkProvider>::SignatureMeta>;
 
     fn hash_algorithm() -> <PK as PkProvider>::HashAlgorithm;
 
@@ -61,7 +61,7 @@ pub trait SigningAdapter<PK: PkProvider>: PkixSignatureAlgorithm {
     fn hash_meta() -> <PK as PkProvider>::HashMeta;
 
     fn allows_pk(pk: &PK) -> Result<()> {
-        (pk.signature_algorithm()? == Self::signature_algorithm())
+        (pk.signature_algorithm() == Self::signature_algorithm())
             .then_some(())
             .ok_or(Error::Validation(ValidationErrorType::PkAndSigAlgMismatch))
     }
