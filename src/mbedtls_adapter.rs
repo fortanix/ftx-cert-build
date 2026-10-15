@@ -39,7 +39,7 @@ impl PkProvider for Pk {
         let mut digest = vec![0u8; A::hash_meta().hash_len];
         hash::Md::hash(A::hash_algorithm(), data, &mut digest)?;
 
-        let mut sig = vec![0; A::signature_meta(self)?.signature_max_len];
+        let mut sig = vec![0; A::signature_meta(self).signature_max_len];
         let len = self.sign(A::hash_algorithm(), &digest, sig.as_mut_slice(), &mut Rdrand)?;
         sig.truncate(len);
         Ok(sig)
@@ -88,10 +88,10 @@ impl<H: PkixMbedTlsHashAdapter> SigningAdapter<Pk> for EcdsaX962<H> {
         PkType::Ecdsa
     }
 
-    fn signature_meta(_pk: &Pk) -> Result<<Pk as PkProvider>::SignatureMeta> {
-        Ok(MbedtlsSignatureMeta {
+    fn signature_meta(_pk: &Pk) -> <Pk as PkProvider>::SignatureMeta {
+        MbedtlsSignatureMeta {
             signature_max_len: ECDSA_MAX_LEN,
-        })
+        }
     }
 
     fn hash_algorithm() -> HashType {
@@ -109,10 +109,10 @@ impl<H: PkixMbedTlsHashAdapter> SigningAdapter<Pk> for RsaPkcs15<H> {
         PkType::Rsa
     }
 
-    fn signature_meta(pk: &Pk) -> Result<<Pk as PkProvider>::SignatureMeta> {
-        Ok(MbedtlsSignatureMeta {
+    fn signature_meta(pk: &Pk) -> <Pk as PkProvider>::SignatureMeta {
+        MbedtlsSignatureMeta {
             signature_max_len: pk.len().div_ceil(8),
-        })
+        }
     }
 
     fn hash_algorithm() -> HashType {

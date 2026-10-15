@@ -42,18 +42,22 @@ fn load_signing_key(key: &PrivateKeyDer<'static>) -> Result<Arc<dyn SigningKey>>
 impl PkProvider for PrivateKeyDer<'static> {
     type SignatureAlgorithm = SignatureAlgorithm;
 
-    type SignatureMeta = RustlsSignatureMeta;
+    type SignatureMeta = ();
 
     type HashAlgorithm = HashAlgorithm;
 
-    type HashMeta = RustlsHashMeta;
+    type HashMeta = ();
 
     fn sign_data<A: SigningAdapter<Self>>(&mut self, data: &[u8]) -> Result<Vec<u8>>
     where
         Self: Sized,
     {
         let key = load_signing_key(self)?;
-        let scheme = A::signature_meta(self)?.scheme;
+        let scheme = match (A::signature_algorithm(), A::hash_algorithm()) {
+            (SignatureAlgorithm::RSA, HashAlgorithm::SHA256) => SignatureScheme::RSA_PKCS1_SHA256,
+            (SignatureAlgorithm::ECDSA, HashAlgorithm::SHA256) => SignatureScheme::ECDSA_NISTP256_SHA256,
+            _ => return Err(Error::Pki("unsupported signature algorithm/hash combination".into())),
+        };
         let signer = key
             .choose_scheme(&[scheme])
             .ok_or_else(|| Error::Pki("private key does not support the requested signature scheme".into()))?;
@@ -74,22 +78,14 @@ impl PkProvider for PrivateKeyDer<'static> {
     }
 }
 
-pub struct RustlsSignatureMeta {
-    pub scheme: SignatureScheme,
-}
-
-pub struct RustlsHashMeta {}
-
 #[cfg(feature = "rsa")]
 impl SigningAdapter<PrivateKeyDer<'static>> for RsaPkcs15<Sha256> {
     fn signature_algorithm() -> <PrivateKeyDer<'static> as PkProvider>::SignatureAlgorithm {
         SignatureAlgorithm::RSA
     }
 
-    fn signature_meta(_pk: &PrivateKeyDer<'static>) -> Result<<PrivateKeyDer<'static> as PkProvider>::SignatureMeta> {
-        Ok(RustlsSignatureMeta {
-            scheme: SignatureScheme::RSA_PKCS1_SHA256,
-        })
+    fn signature_meta(_pk: &PrivateKeyDer<'static>) -> <PrivateKeyDer<'static> as PkProvider>::SignatureMeta {
+        ()
     }
 
     fn hash_algorithm() -> HashAlgorithm {
@@ -97,7 +93,7 @@ impl SigningAdapter<PrivateKeyDer<'static>> for RsaPkcs15<Sha256> {
     }
 
     fn hash_meta() -> <PrivateKeyDer<'static> as PkProvider>::HashMeta {
-        RustlsHashMeta {}
+        ()
     }
 }
 
@@ -108,18 +104,16 @@ impl SigningAdapter<PrivateKeyDer<'static>> for EcdsaX962<Sha256> {
         SignatureAlgorithm::ECDSA
     }
 
-    fn signature_meta(_pk: &PrivateKeyDer<'static>) -> Result<RustlsSignatureMeta> {
-        Ok(RustlsSignatureMeta {
-            scheme: SignatureScheme::ECDSA_NISTP256_SHA256,
-        })
+    fn signature_meta(_pk: &PrivateKeyDer<'static>) -> <PrivateKeyDer<'static> as PkProvider>::SignatureMeta {
+        ()
     }
 
     fn hash_algorithm() -> HashAlgorithm {
         HashAlgorithm::SHA256
     }
 
-    fn hash_meta() -> RustlsHashMeta {
-        RustlsHashMeta {}
+    fn hash_meta() -> <PrivateKeyDer<'static> as PkProvider>::HashMeta {
+        ()
     }
 }
 

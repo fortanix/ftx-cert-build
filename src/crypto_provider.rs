@@ -49,11 +49,15 @@ pub trait PkProvider {
 pub trait SigningAdapter<PK: PkProvider>: PkixSignatureAlgorithm {
     fn signature_algorithm() -> <PK as PkProvider>::SignatureAlgorithm;
 
-    /// This function can error if the given `PK` does not have [Self::signature_algorithm] as its algorithm
-    fn signature_meta(pk: &PK) -> Result<<PK as PkProvider>::SignatureMeta>;
+    /// Returns additional signature metadata derived from the specific key,
+    /// such as the signature length.
+    /// This function can error if the given `PK` does not have
+    /// [Self::signature_algorithm] as its algorithm
+    fn signature_meta(pk: &PK) -> <PK as PkProvider>::SignatureMeta;
 
     fn hash_algorithm() -> <PK as PkProvider>::HashAlgorithm;
 
+    /// Returns additional hash metadata, such as the digest length
     fn hash_meta() -> <PK as PkProvider>::HashMeta;
 
     fn allows_pk(pk: &PK) -> Result<()> {
