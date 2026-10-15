@@ -3,21 +3,22 @@
 // ECDSA is excluded from byte-for-byte CSR comparison as ECDSA provider
 // uses randomized signing.
 
+use aws_lc_rs::encoding::{AsDer, Pkcs8V1Der};
+use aws_lc_rs::rsa::{KeyPair, KeySize};
 use ftx_cert_build::rustls_adapter::RustlsPk;
 use ftx_cert_build::{name_builder::DnType, Csr, NameBuilder};
 use mbedtls::{hash, pk::Pk};
 use pkix::types::{RsaPkcs15, Sha256};
-use rsa::pkcs8::EncodePrivateKey;
 use rustls_pki_types::PrivateKeyDer;
 
 fn build_csrs() -> (Csr, Csr, Pk) {
     let algorithm = RsaPkcs15(Sha256);
     let provider = rustls::crypto::aws_lc_rs::default_provider();
     // Generate once and import the same key into both providers.
-    let key = rsa::RsaPrivateKey::new(&mut rand_core::OsRng, 2048).unwrap();
-    let der = key.to_pkcs8_der().unwrap();
-    let mut mbedtls_key = Pk::from_private_key(der.as_bytes(), None).unwrap();
-    let mut rustls_key = RustlsPk::from_der(PrivateKeyDer::Pkcs8(der.as_bytes().to_vec().into()), &provider).unwrap();
+    let key = KeyPair::generate(KeySize::Rsa2048).unwrap();
+    let der = AsDer::<Pkcs8V1Der>::as_der(&key).unwrap();
+    let mut mbedtls_key = Pk::from_private_key(der.as_ref(), None).unwrap();
+    let mut rustls_key = RustlsPk::from_der(PrivateKeyDer::Pkcs8(der.as_ref().to_vec().into()), &provider).unwrap();
 
     let subject = NameBuilder::new().add_dn(DnType::CommonName, "csr.example").build_subject();
     let mbedtls_csr = Csr::mbedtls_crypto_builder()

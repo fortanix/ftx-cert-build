@@ -119,31 +119,28 @@ impl SigningAdapter<RustlsPk> for EcdsaX962<Sha256> {
     fn hash_meta() -> <RustlsPk as PkProvider>::HashMeta {}
 }
 
-/// Generate an RSA-2048 key with public exponent 65537 (default) using the provider's RNG.
+/// Generate an RSA-2048 key with public exponent 65537 using internal AWS-LC randomness.
 #[cfg(feature = "rsa")]
 impl<H> DefaultPkParameters<RustlsCryptoProvider> for RsaPkcs15<H> {
     fn generate_pk(crypto_provider: &mut RustlsCryptoProvider) -> Result<RustlsPk> {
-        use rsa::pkcs8::EncodePrivateKey;
-        let key = rsa::RsaPrivateKey::new(&mut crypto_provider.rng, 2048).map_err(|err| Error::Pki(err.to_string().into()))?;
-        let der = key.to_pkcs8_der().map_err(|err| Error::Pki(err.to_string().into()))?;
-        RustlsPk::from_der(
-            PrivateKeyDer::Pkcs8(der.as_bytes().to_vec().into()),
-            &crypto_provider.provider,
-        )
+        use aws_lc_rs::encoding::{AsDer, Pkcs8V1Der};
+        use aws_lc_rs::rsa::{KeyPair, KeySize};
+
+        let key = KeyPair::generate(KeySize::Rsa2048).map_err(|err| Error::Pki(err.to_string().into()))?;
+        let der = AsDer::<Pkcs8V1Der>::as_der(&key).map_err(|err| Error::Pki(err.to_string().into()))?;
+        RustlsPk::from_der(PrivateKeyDer::Pkcs8(der.as_ref().to_vec().into()), &crypto_provider.provider)
     }
 }
 
-/// Generate a P-256 key using the provider's RNG.
+/// Generate a P-256 key using internal AWS-LC randomness.
 #[cfg(feature = "ecdsaecdh")]
 impl<H> DefaultPkParameters<RustlsCryptoProvider> for EcdsaX962<H> {
     fn generate_pk(crypto_provider: &mut RustlsCryptoProvider) -> Result<RustlsPk> {
-        use p256::pkcs8::EncodePrivateKey;
-        let key = p256::SecretKey::random(&mut crypto_provider.rng);
-        let der = key.to_pkcs8_der().map_err(|err| Error::Pki(err.to_string().into()))?;
-        RustlsPk::from_der(
-            PrivateKeyDer::Pkcs8(der.as_bytes().to_vec().into()),
-            &crypto_provider.provider,
-        )
+        use aws_lc_rs::signature::{EcdsaKeyPair, ECDSA_P256_SHA256_ASN1_SIGNING};
+
+        let key = EcdsaKeyPair::generate(&ECDSA_P256_SHA256_ASN1_SIGNING).map_err(|err| Error::Pki(err.to_string().into()))?;
+        let der = key.to_pkcs8v1().map_err(|err| Error::Pki(err.to_string().into()))?;
+        RustlsPk::from_der(PrivateKeyDer::Pkcs8(der.as_ref().to_vec().into()), &crypto_provider.provider)
     }
 }
 
