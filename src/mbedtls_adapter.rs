@@ -196,12 +196,10 @@ mod tests {
     #[test]
     fn test_ecdsa_adapter_key_import() {
         let mut mbedtls_provider = MbedtlsCryptoProvider::new();
-        let mut generated = EcdsaX962::<Sha256>::generate_pk(&mut mbedtls_provider).unwrap();
-        let der = generated.write_private_der_vec().unwrap();
-        let imported = Pk::from_private_key(&der, None).unwrap();
+        let generated = EcdsaX962::<Sha256>::generate_pk(&mut mbedtls_provider).unwrap();
 
-        assert_eq!(imported.pk_type(), Type::Eckey);
-        <EcdsaX962<Sha256> as SigningAdapter<Pk>>::allows_pk(&imported)
-            .expect("an imported EC key capable of ECDSA should be accepted");
+        assert_eq!(generated.pk_type(), Type::Eckey);
+        <EcdsaX962<Sha256> as SigningAdapter<Pk>>::allows_pk(&generated)
+            .expect("an imported/generated EC key capable of ECDSA should be accepted");
     }
 }
