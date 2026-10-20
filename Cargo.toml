@@ -17,7 +17,7 @@ aws-lc-rs = { version = "1.18", default-features = false, optional = true }
 rand_core = { version = "0.6", features = ["std"], optional = true }
 
 [features]
-default = ["ecdsaecdh", "rsa", "mbedtls_adapter"]
+default = ["ecdsaecdh", "rsa"]
 
 ecdsaecdh = []
 mbedtls_adapter = ["dep:mbedtls"]
