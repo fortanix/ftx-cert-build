@@ -220,9 +220,9 @@ version = "0.2.0"
 dependencies = [
  "aws-lc-rs",
  "chrono",
+ "getrandom 0.4.3",
  "mbedtls",
  "pkix",
- "rand_core",
  "rustls",
  "rustls-pki-types",
  "serde",
@@ -546,15 +546,6 @@ name = "r-efi"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
-
-[[package]]
-name = "rand_core"
-version = "0.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
-dependencies = [
- "getrandom 0.2.17",
-]
 
 [[package]]
 name = "regex"
