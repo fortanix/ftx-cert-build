@@ -156,18 +156,18 @@ impl<H> DefaultPkParameters<RustlsCryptoProvider> for EcdsaX962<H> {
 
 pub struct RustlsCryptoProvider {
     rng: OsRng,
-    provider: Arc<CryptoProvider>,
+    provider: CryptoProvider,
 }
 
 impl Default for RustlsCryptoProvider {
     fn default() -> Self {
-        Self::with_provider(Arc::new(rustls::crypto::aws_lc_rs::default_provider()))
+        Self::with_provider(rustls::crypto::aws_lc_rs::default_provider())
     }
 }
 
 impl RustlsCryptoProvider {
     /// Use an explicit rustls provider when loading generated keys.
-    pub fn with_provider(provider: Arc<CryptoProvider>) -> Self {
+    pub fn with_provider(provider: CryptoProvider) -> Self {
         Self { rng: OsRng, provider }
     }
 
@@ -193,9 +193,7 @@ impl Certificate {
         Self::builder().with_crypto_provider(RustlsCryptoProvider::new())
     }
 
-    pub fn rustls_crypto_builder_with_provider(
-        provider: Arc<CryptoProvider>,
-    ) -> Builder<CertificateState, RustlsCryptoProvider> {
+    pub fn rustls_crypto_builder_with_provider(provider: CryptoProvider) -> Builder<CertificateState, RustlsCryptoProvider> {
         Self::builder().with_crypto_provider(RustlsCryptoProvider::with_provider(provider))
     }
 }
@@ -206,9 +204,7 @@ impl Csr {
         Self::builder().with_crypto_provider(RustlsCryptoProvider::new())
     }
 
-    pub fn rustls_crypto_builder_with_provider<'a>(
-        provider: Arc<CryptoProvider>,
-    ) -> Builder<CsrState<'a>, RustlsCryptoProvider> {
+    pub fn rustls_crypto_builder_with_provider<'a>(provider: CryptoProvider) -> Builder<CsrState<'a>, RustlsCryptoProvider> {
         Self::builder().with_crypto_provider(RustlsCryptoProvider::with_provider(provider))
     }
 }
