@@ -25,7 +25,7 @@ use crate::{Builder, Certificate, Csr};
 
 impl From<mbedtls::Error> for Error {
     fn from(err: mbedtls::Error) -> Self {
-        Self::Crypto(Box::new(err))
+        Self::CryptoProvider(Box::new(err))
     }
 }
 

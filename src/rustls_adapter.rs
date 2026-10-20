@@ -32,7 +32,7 @@ use crate::{Builder, Certificate, Csr};
 
 impl From<aws_lc_rs::error::Unspecified> for Error {
     fn from(err: aws_lc_rs::error::Unspecified) -> Self {
-        Self::Crypto(Box::new(err))
+        Self::CryptoProvider(err.into())
     }
 }
 
@@ -46,7 +46,7 @@ impl RustlsPk {
         let key = provider
             .key_provider
             .load_private_key(key)
-            .map_err(|err| Error::Pki(err.to_string().into()))?;
+            .map_err(|err| Error::CryptoProvider(err.into()))?;
         Ok(Self { key })
     }
 }
@@ -67,21 +67,25 @@ impl PkProvider for RustlsPk {
         let scheme = match (A::signature_algorithm(), A::hash_algorithm()) {
             (SignatureAlgorithm::RSA, HashAlgorithm::SHA256) => SignatureScheme::RSA_PKCS1_SHA256,
             (SignatureAlgorithm::ECDSA, HashAlgorithm::SHA256) => SignatureScheme::ECDSA_NISTP256_SHA256,
-            _ => return Err(Error::Pki("unsupported signature algorithm/hash combination".into())),
+            _ => {
+                return Err(Error::CryptoProvider(
+                    "unsupported signature algorithm/hash combination".into(),
+                ))
+            }
         };
         let signer = self
             .key
             .choose_scheme(&[scheme])
-            .ok_or_else(|| Error::Pki("private key does not support the requested signature scheme".into()))?;
+            .ok_or_else(|| Error::CryptoProvider("private key does not support the requested signature scheme".into()))?;
         // Rustls hashes the message internally according to the selected scheme.
-        signer.sign(data).map_err(|err| Error::Pki(err.to_string().into()))
+        signer.sign(data).map_err(|err| Error::CryptoProvider(err.into()))
     }
 
     fn write_public_key_der(&mut self) -> Result<Vec<u8>> {
         let public_key = self
             .key
             .public_key()
-            .ok_or_else(|| Error::Pki("rustls signing key does not expose a public key".into()))?;
+            .ok_or_else(|| Error::CryptoProvider("rustls signing key does not expose a public key".into()))?;
         Ok(public_key.to_vec())
     }
 
@@ -177,7 +181,9 @@ impl CrateCryptoProvider for RustlsCryptoProvider {
     type Pk = RustlsPk;
 
     fn fill_random(&mut self, bytes: &mut [u8]) -> Result<()> {
-        self.rng.try_fill_bytes(bytes).map_err(|err| Error::Crypto(Box::new(err)))
+        self.rng
+            .try_fill_bytes(bytes)
+            .map_err(|err| Error::CryptoProvider(err.into()))
     }
 }
 
