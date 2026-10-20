@@ -11,8 +11,6 @@ use pkix::types::EcdsaX962;
 use pkix::types::RsaPkcs15;
 #[cfg(any(feature = "rsa", feature = "ecdsaecdh"))]
 use pkix::types::Sha256;
-use rand_core::OsRng;
-use rand_core::RngCore;
 use rustls::crypto::hash::HashAlgorithm;
 use rustls::crypto::CryptoProvider;
 use rustls::sign::SigningKey;
@@ -155,7 +153,6 @@ impl<H> DefaultPkParameters<RustlsCryptoProvider> for EcdsaX962<H> {
 }
 
 pub struct RustlsCryptoProvider {
-    rng: OsRng,
     provider: CryptoProvider,
 }
 
@@ -168,7 +165,7 @@ impl Default for RustlsCryptoProvider {
 impl RustlsCryptoProvider {
     /// Use an explicit rustls provider when loading generated keys.
     pub fn with_provider(provider: CryptoProvider) -> Self {
-        Self { rng: OsRng, provider }
+        Self { provider }
     }
 
     /// Use the AWS-LC rustls provider without installing a global provider.
@@ -181,14 +178,12 @@ impl CrateCryptoProvider for RustlsCryptoProvider {
     type Pk = RustlsPk;
 
     fn fill_random(&mut self, bytes: &mut [u8]) -> Result<()> {
-        self.rng
-            .try_fill_bytes(bytes)
-            .map_err(|err| Error::CryptoProvider(err.into()))
+        getrandom::fill(bytes).map_err(|err| Error::CryptoProvider(err.into()))
     }
 }
 
 impl Certificate {
-    /// Build (tbs)certificates using PKI types and OsRng
+    /// Build (tbs)certificates using PKI types and system randomness.
     pub fn rustls_crypto_builder() -> Builder<CertificateState, RustlsCryptoProvider> {
         Self::builder().with_crypto_provider(RustlsCryptoProvider::new())
     }
@@ -199,7 +194,7 @@ impl Certificate {
 }
 
 impl Csr {
-    /// Build CSRs using PKI types and OsRng
+    /// Build CSRs using PKI types and system randomness.
     pub fn rustls_crypto_builder<'a>() -> Builder<CsrState<'a>, RustlsCryptoProvider> {
         Self::builder().with_crypto_provider(RustlsCryptoProvider::new())
     }

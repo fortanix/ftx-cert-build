@@ -14,14 +14,14 @@ thiserror = "1.0.2"
 rustls = { version = "0.23", optional = true }
 rustls-pki-types = { version = "1.15.1", optional = true }
 aws-lc-rs = { version = "1.18", default-features = false, optional = true }
-rand_core = { version = "0.6", features = ["std"], optional = true }
+getrandom = { version = "0.4", optional = true }
 
 [features]
 default = ["ecdsaecdh", "rsa"]
 
 ecdsaecdh = []
 mbedtls_adapter = ["dep:mbedtls"]
-rustls_adapter = ["dep:rustls", "dep:rustls-pki-types", "dep:aws-lc-rs", "dep:rand_core"]
+rustls_adapter = ["dep:rustls", "dep:rustls-pki-types", "dep:aws-lc-rs", "dep:getrandom"]
 rsa = []
 # Add serde::Serialize and serde:Deserialize bound to data types.
 # If you'd like to use `serde` to serialize certs/csrs.
