@@ -12,9 +12,14 @@ pub mod key_material;
 #[cfg(feature = "mbedtls_adapter")]
 pub mod mbedtls_adapter;
 pub mod name_builder;
+#[cfg(feature = "rustls_adapter")]
+pub mod rustls_adapter;
 pub(crate) mod util;
 
 pub use builder_common::Builder;
 pub use cert_builder::{Certificate, TbsCertificate};
 pub use csr_builder::Csr;
 pub use name_builder::NameBuilder;
+
+#[cfg(test)]
+mod tests;

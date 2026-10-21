@@ -4,7 +4,9 @@
 |* the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 use mbedtls::hash::{self, Type as HashType};
-use mbedtls::pk::{Pk, Type as PkType, ECDSA_MAX_LEN};
+#[cfg(feature = "ecdsaecdh")]
+use mbedtls::pk::ECDSA_MAX_LEN;
+use mbedtls::pk::{Pk, Type as PkType};
 use mbedtls::rng::{Random, Rdrand};
 #[cfg(feature = "rsa")]
 use pkix::types::RsaPkcs15;
@@ -13,12 +15,19 @@ use pkix::types::Sha256;
 use {mbedtls::pk::EcGroupId, pkix::types::EcdsaX962};
 
 use crate::cert_builder::CertificateState;
+use crate::crypto_provider::CryptoProvider;
 #[cfg(feature = "ecdsaecdh")]
-use crate::crypto_provider::{CryptoProvider, DefaultPkParameters};
+use crate::crypto_provider::DefaultPkParameters;
 use crate::crypto_provider::{PkProvider, SigningAdapter};
 use crate::csr_builder::CsrState;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::{Builder, Certificate, Csr};
+
+impl From<mbedtls::Error> for Error {
+    fn from(err: mbedtls::Error) -> Self {
+        Self::CryptoProvider(Box::new(err))
+    }
+}
 
 impl PkProvider for Pk {
     type SignatureAlgorithm = PkType;
@@ -72,6 +81,16 @@ pub struct MbedtlsHashMeta {
 
 #[cfg(feature = "ecdsaecdh")]
 impl<H: PkixMbedTlsHashAdapter> SigningAdapter<Pk> for EcdsaX962<H> {
+    fn allows_pk(pk: &Pk) -> Result<()> {
+        // Imported EC keys use Eckey but `signature_algorithm` returns PkType::Ecdsa
+        // checking for equality doesn't work for EC keys.
+        pk.can_do(<Self as SigningAdapter<Pk>>::signature_algorithm())
+            .then_some(())
+            .ok_or(crate::error::Error::Validation(
+                crate::error::ValidationErrorType::PkAndSigAlgMismatch,
+            ))
+    }
+
     fn signature_algorithm() -> <Pk as PkProvider>::SignatureAlgorithm {
         PkType::Ecdsa
     }
@@ -130,9 +149,9 @@ impl PkixMbedTlsHashAdapter for Sha256 {
 
 /// For ECDSA, the default is [PkAlgorithm::EcdsaEcdh] with [EcGroupId::SecP256R1]
 #[cfg(feature = "ecdsaecdh")]
-impl<H> DefaultPkParameters<Pk> for EcdsaX962<H> {
-    fn generate_pk<R: Random>(rng: &mut R) -> Result<Pk> {
-        Ok(Pk::generate_ec(rng, EcGroupId::SecP256R1)?)
+impl<H> DefaultPkParameters<MbedtlsCryptoProvider> for EcdsaX962<H> {
+    fn generate_pk(crypto_provider: &mut MbedtlsCryptoProvider) -> Result<Pk> {
+        Ok(Pk::generate_ec(&mut crypto_provider.rng, EcGroupId::SecP256R1)?)
     }
 }
 
@@ -149,10 +168,8 @@ impl MbedtlsCryptoProvider {
 impl CryptoProvider for MbedtlsCryptoProvider {
     type Pk = Pk;
 
-    type Rng = Rdrand;
-
-    fn rng(&mut self) -> &mut Self::Rng {
-        &mut self.rng
+    fn fill_random(&mut self, bytes: &mut [u8]) -> Result<()> {
+        Ok(self.rng.random(bytes)?)
     }
 }
 
@@ -167,5 +184,22 @@ impl Csr {
     /// Build CSRs using PKI types and RNG from `FtxCrypto`
     pub fn mbedtls_crypto_builder<'a>() -> Builder<CsrState<'a>, MbedtlsCryptoProvider> {
         Self::builder().with_crypto_provider(MbedtlsCryptoProvider::new())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mbedtls::pk::{Pk, Type};
+
+    #[cfg(feature = "ecdsaecdh")]
+    #[test]
+    fn test_ecdsa_adapter_key_import() {
+        let mut mbedtls_provider = MbedtlsCryptoProvider::new();
+        let generated = EcdsaX962::<Sha256>::generate_pk(&mut mbedtls_provider).unwrap();
+
+        assert_eq!(generated.pk_type(), Type::Eckey);
+        <EcdsaX962<Sha256> as SigningAdapter<Pk>>::allows_pk(&generated)
+            .expect("an imported/generated EC key capable of ECDSA should be accepted");
     }
 }

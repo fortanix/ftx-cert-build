@@ -3,28 +3,20 @@
 |* This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of
 |* the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-use std::borrow::Cow;
 use std::fmt::Display;
 
-use mbedtls::Error as MbedtlsError;
 use pkix::types::ObjectIdentifier;
-use pkix::ASN1Error;
 use thiserror::Error;
 
 pub type Result<T> = ::std::result::Result<T, Error>;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    // local errors
-    #[error("Pki: {0}")]
-    Pki(Cow<'static, str>),
     #[error("Validation failed")]
     Validation(ValidationErrorType),
     // from errors
-    #[error("Mbedtls")]
-    Mbedtls(#[from] MbedtlsError),
-    #[error("ASN1")]
-    ASN1(#[from] ASN1Error),
+    #[error("Crypto operation failed")]
+    CryptoProvider(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
 #[derive(Debug)]
