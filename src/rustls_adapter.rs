@@ -136,7 +136,10 @@ impl<H> DefaultPkParameters<RustlsCryptoProvider> for RsaPkcs15<H> {
 
         let key = KeyPair::generate(KeySize::Rsa2048)?;
         let der = AsDer::<Pkcs8V1Der>::as_der(&key)?;
-        RustlsPk::from_der(PrivateKeyDer::Pkcs8(der.as_ref().to_vec().into()), &crypto_provider.provider)
+        RustlsPk::from_der(
+            PrivateKeyDer::Pkcs8(der.as_ref().into()).clone_key(),
+            &crypto_provider.provider,
+        )
     }
 }
 
@@ -148,7 +151,10 @@ impl<H> DefaultPkParameters<RustlsCryptoProvider> for EcdsaX962<H> {
 
         let key = EcdsaKeyPair::generate(&ECDSA_P256_SHA256_ASN1_SIGNING)?;
         let der = key.to_pkcs8v1()?;
-        RustlsPk::from_der(PrivateKeyDer::Pkcs8(der.as_ref().to_vec().into()), &crypto_provider.provider)
+        RustlsPk::from_der(
+            PrivateKeyDer::Pkcs8(der.as_ref().into()).clone_key(),
+            &crypto_provider.provider,
+        )
     }
 }
 
