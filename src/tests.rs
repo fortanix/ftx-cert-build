@@ -10,11 +10,12 @@
 
 use aws_lc_rs::encoding::{AsDer, Pkcs8V1Der};
 use aws_lc_rs::rsa::{KeyPair, KeySize};
-use ftx_cert_build::rustls_adapter::RustlsPk;
-use ftx_cert_build::{name_builder::DnType, Csr, NameBuilder};
 use mbedtls::{hash, pk::Pk};
 use pkix::types::{RsaPkcs15, Sha256};
 use rustls_pki_types::PrivateKeyDer;
+
+use crate::rustls_adapter::RustlsPk;
+use crate::{name_builder::DnType, Csr, NameBuilder};
 
 fn build_csrs() -> (Csr, Csr, Pk) {
     let algorithm = RsaPkcs15(Sha256);

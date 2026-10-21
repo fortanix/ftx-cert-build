@@ -40,7 +40,7 @@ pub struct RustlsPk {
 }
 
 impl RustlsPk {
-    pub fn from_der(key: PrivateKeyDer<'static>, provider: &CryptoProvider) -> Result<Self> {
+    pub(crate) fn from_der(key: PrivateKeyDer<'static>, provider: &CryptoProvider) -> Result<Self> {
         let key = provider
             .key_provider
             .load_private_key(key)

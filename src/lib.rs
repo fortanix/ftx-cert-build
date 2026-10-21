@@ -20,3 +20,6 @@ pub use builder_common::Builder;
 pub use cert_builder::{Certificate, TbsCertificate};
 pub use csr_builder::Csr;
 pub use name_builder::NameBuilder;
+
+#[cfg(test)]
+mod tests;
