@@ -15,7 +15,7 @@ pub enum Error {
     #[error("Validation failed")]
     Validation(ValidationErrorType),
     // from errors
-    #[error("Crypto operation failed: {0}")]
+    #[error("Crypto operation failed")]
     CryptoProvider(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
